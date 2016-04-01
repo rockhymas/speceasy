@@ -83,8 +83,6 @@ namespace SpecEasy
 
                 Func<Task> executeTest = async () =>
                 {
-                    Before();
-
                     try
                     {
                         var exceptionThrownAndAsserted = false;
@@ -251,7 +249,7 @@ namespace SpecEasy
             foreach (var m in declaredMethods)
             {
                 var method = m;
-                Given(method.Name).Verify(() => method.Invoke(this, null));
+                Given(method.Name).Verify(() => Given(() => Before()).Verify(() => method.Invoke(this, null)));
             }
         }
 
@@ -281,7 +279,6 @@ namespace SpecEasy
         {
             foreach (var context in contextList)
             {
-                Before();
                 await context.SetupContext().ConfigureAwait(false);
             }
         }
