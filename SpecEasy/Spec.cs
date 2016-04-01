@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Reflection;
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -30,36 +28,36 @@ namespace SpecEasy
         private IList<TestCaseData> BuildTestCases()
         {
             CreateMethodContexts();
-            return BuildTestCases(new List<KeyValuePair<string, Context>>(), 0);
+            return BuildTestCases(new List<Context>(), 0);
         }
 
-        private IList<TestCaseData> BuildTestCases(List<KeyValuePair<string, Context>> contextList, int depth)
+        private IList<TestCaseData> BuildTestCases(IList<Context> contextList, int depth)
         {
             var testCases = new List<TestCaseData>();
 
             var cachedWhen = when;
-            foreach (var namedContext in contexts.Select(kvp => kvp))
+            foreach (var context in contexts.ToList()) // make a copy of contexts list so we can reassign in the loop
             {
-                var givenContext = namedContext.Value;
+                var givenContext = context;
                 then = new Dictionary<string, Func<Task>>();
-                contexts = new Dictionary<string, Context>();
+                contexts = new List<Context>();
                 when = cachedWhen;
 
                 givenContext.EnterContext();
 
                 if (depth > 0)
-                    contextList.Add(namedContext);
+                    contextList.Add(context);
 
                 testCases.AddRange(BuildTestCases(contextList));
                 testCases.AddRange(BuildTestCases(contextList, depth + 1));
                 if (contextList.Any())
-                    contextList.Remove(namedContext);
+                    contextList.Remove(context);
             }
 
             return testCases;
         }
 
-        private IList<TestCaseData> BuildTestCases(List<KeyValuePair<string, Context>> contextList)
+        private IList<TestCaseData> BuildTestCases(IList<Context> contextList)
         {
             var testCases = new List<TestCaseData>();
 
@@ -67,13 +65,11 @@ namespace SpecEasy
 
             var setupText = new StringBuilder();
 
-            var givenDescriptions = contextList.Select(kvp => kvp.Key).ToList();
-            var givenText = "given ";
-            foreach (var description in givenDescriptions.Where(IsNamedContext))
+            var first = true;
+            foreach (var context in contextList.Where(c => c.IsNamedContext))
             {
-                setupText.AppendLine(givenText + description);
-                if (givenText == "given ")
-                    givenText = Indent("and ", 1);
+                setupText.AppendLine(context.Conjunction(first) + context.Description);
+                first = false;
             }
 
             setupText.AppendLine("when " + when.Key);
@@ -82,7 +78,7 @@ namespace SpecEasy
 
             foreach (var spec in then)
             {
-                var contextListCapture = new List<KeyValuePair<string, Context>>(contextList);
+                var contextListCapture = new List<Context>(contextList);
                 var whenCapture = new KeyValuePair<string, Func<Task>>(when.Key, when.Value);
 
                 Func<Task> executeTest = async () =>
@@ -171,7 +167,7 @@ namespace SpecEasy
         }
 
         private Dictionary<string, Func<Task>> then = new Dictionary<string, Func<Task>>();
-        private Dictionary<string, Context> contexts = new Dictionary<string, Context>();
+        private List<Context> contexts = new List<Context>();
         private KeyValuePair<string, Func<Task>> when;
 
         protected IContext Given(string description, Action setup)
@@ -179,10 +175,12 @@ namespace SpecEasy
             return Given(description, WrapAction(setup));
         }
 
-        protected IContext Given(string description, Func<Task> setup)
+        protected IContext Given(string description, Func<Task> setup, string conjunction = null)
         {
-            if (contexts.ContainsKey(description)) throw new Exception("Reusing a given description");
-            return contexts[description] = new Context(setup);
+            if (contexts.Any(c => c.Description == description)) throw new Exception("Reusing a given description");
+            var context = new Context(setup, description, conjunction);
+            contexts.Add(context);
+            return context;
         }
 
         protected IContext Given(Action setup)
@@ -192,7 +190,9 @@ namespace SpecEasy
 
         protected IContext Given(Func<Task> setup)
         {
-            return contexts[CreateUnnamedContextName()] = new Context(setup);
+            var context = new Context(setup);
+            contexts.Add(context);
+            return context;
         }
 
         protected IContext Given(string description)
@@ -200,9 +200,12 @@ namespace SpecEasy
             return Given(description, () => { });
         }
 
+
         protected virtual IContext ForWhen(string description, Action action)
         {
-            return contexts[CreateUnnamedContextName()] = new Context(async () => { }, () => When(description, action));
+            var context = new Context(async () => { }, () => When(description, action));
+            contexts.Add(context);
+            return context;
         }
 
         protected virtual void When(string description, Action action)
@@ -229,17 +232,6 @@ namespace SpecEasy
         private static Func<Task> WrapAction(Action action)
         {
             return async () => action();
-        }
-
-        private int nuSpecContextId;
-        private string CreateUnnamedContextName()
-        {
-            return "SPECEASY" + (nuSpecContextId++).ToString(CultureInfo.InvariantCulture);
-        }
-
-        private static bool IsNamedContext(string name)
-        {
-            return !name.StartsWith("SPECEASY");
         }
 
         private Exception thrownException;
@@ -281,18 +273,13 @@ namespace SpecEasy
         protected virtual void BeforeEachExample() { }
         protected virtual void AfterEachExample() { }
 
-        private async Task InitializeContext(IEnumerable<KeyValuePair<string, Context>> contextList)
+        private async Task InitializeContext(IEnumerable<Context> contextList)
         {
-            foreach (var action in contextList.Select(kvp => kvp.Value))
+            foreach (var context in contextList)
             {
                 Before();
-                await action.SetupContext().ConfigureAwait(false);
+                await context.SetupContext().ConfigureAwait(false);
             }
-        }
-
-        private static string Indent(string text, int depth)
-        {
-            return new string(' ', depth * 2) + text;
         }
     }
 }
