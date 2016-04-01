@@ -13,6 +13,7 @@ namespace SpecEasy
     {
         public const string GivenConjunction = "given ";
         public const string AndConjunction = "  and ";
+        public const string ButConjunction = "  but ";
 
         private const string UnnamedContextPrefix = "SPECEASY";
         private const string DefaultFirstConjunction = GivenConjunction;

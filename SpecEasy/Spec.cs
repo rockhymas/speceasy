@@ -200,6 +200,15 @@ namespace SpecEasy
             return Given(description, () => { });
         }
 
+        protected IContext And(string description, Action setup)
+        {
+            return Given(description, WrapAction(setup));
+        }
+
+        protected IContext But(string description, Action setup)
+        {
+            return Given(description, WrapAction(setup), Context.ButConjunction);
+        }
 
         protected virtual IContext ForWhen(string description, Action action)
         {
