@@ -12,25 +12,28 @@ namespace SpecEasy.Specs.FizzBuzz
 
             When("running FizzBuzz", () => result = SUT.Run(input));
 
-            Given("an input of 1", () => input = 1).Verify(() => 
+            Given("an input of 1", () => input = 1).Verify(() =>
                 Then("it should return a stringified 1", () => Assert.That(result, Is.EqualTo("1"))));
 
-            Given("an input of 2", () => input = 2).Verify(() => 
+            Given("an input of 2", () => input = 2).Verify(() =>
                 Then("it should return a stringified 2", () => Assert.That(result, Is.EqualTo("2"))));
 
             Given("an input of 3", () => input = 3).Verify(() =>
                 Then("it should return fizz", () => Assert.That(result, Is.EqualTo("fizz"))));
 
-            Given("an input of a multiple of 3", () => input = 9).Verify(() =>
+            Given("an input of a multiple of 3", () => input = 9).
+            Or("an input of a different multiple of 3", () => input = 12).Verify(() =>
                 Then("it should return fizz", () => Assert.That(result, Is.EqualTo("fizz"))));
 
             Given("an input of 5", () => input = 5).Verify(() =>
                 Then("it should return buzz", () => Assert.That(result, Is.EqualTo("buzz"))));
 
-            Given("an input of a multiple of 5", () => input = 20).Verify(() =>
+            Given("an input of a multiple of 5", () => input = 20).
+            Or("an input of a different multiple of 5", () => input = 25).Verify(() =>
                 Then("it should return buzz", () => Assert.That(result, Is.EqualTo("buzz"))));
 
-            Given("an input of a multiple of 3 and 5", () => input = 30).Verify(() =>
+            Given("an input of a multiple of 3 and 5", () => input = 30).
+            Or("an input of a different multiple of 3 and 5", () => input = 45).Verify(() =>
                 Then("it should return fizzbuzz", () => Assert.That(result, Is.EqualTo("fizzbuzz"))));
         }
     }

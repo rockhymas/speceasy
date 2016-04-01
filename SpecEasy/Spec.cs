@@ -36,7 +36,7 @@ namespace SpecEasy
             var testCases = new List<TestCaseData>();
 
             var cachedWhen = when;
-            foreach (var context in contexts.ToList()) // make a copy of contexts list so we can reassign in the loop
+            foreach (var context in contexts.SelectMany(c => c.EquivalentContexts()).ToList())
             {
                 var givenContext = context;
                 then = new Dictionary<string, Func<Task>>();
@@ -172,12 +172,12 @@ namespace SpecEasy
 
         protected IContext Given(string description, Action setup)
         {
-            return Given(description, WrapAction(setup));
+            return Given(description, setup.Wrap());
         }
 
         protected IContext Given(string description, Func<Task> setup, string conjunction = null)
         {
-            if (contexts.Any(c => c.Description == description)) throw new Exception("Reusing a given description");
+            if (contexts.SelectMany(c => c.EquivalentContexts()).Any(c => c.Description == description)) throw new Exception("Reusing a given description");
             var context = new Context(setup, description, conjunction);
             contexts.Add(context);
             return context;
@@ -185,7 +185,7 @@ namespace SpecEasy
 
         protected IContext Given(Action setup)
         {
-            return Given(WrapAction(setup));
+            return Given(setup.Wrap());
         }
 
         protected IContext Given(Func<Task> setup)
@@ -202,12 +202,12 @@ namespace SpecEasy
 
         protected IContext And(string description, Action setup)
         {
-            return Given(description, WrapAction(setup));
+            return Given(description, setup.Wrap());
         }
 
         protected IContext But(string description, Action setup)
         {
-            return Given(description, WrapAction(setup), Context.ButConjunction);
+            return Given(description, setup.Wrap(), Context.ButConjunction);
         }
 
         protected virtual IContext ForWhen(string description, Action action)
@@ -219,7 +219,7 @@ namespace SpecEasy
 
         protected virtual void When(string description, Action action)
         {
-            When(description, WrapAction(action));
+            When(description, action.Wrap());
         }
 
         protected virtual void When(string description, Func<Task> func)
@@ -229,18 +229,13 @@ namespace SpecEasy
 
         protected IVerifyContext Then(string description, Action specification)
         {
-            return Then(description, WrapAction(specification));
+            return Then(description, specification.Wrap());
         }
 
         protected IVerifyContext Then(string description, Func<Task> specification)
         {
             then[description] = specification;
             return new VerifyContext(Then);
-        }
-
-        private static Func<Task> WrapAction(Action action)
-        {
-            return async () => action();
         }
 
         private Exception thrownException;

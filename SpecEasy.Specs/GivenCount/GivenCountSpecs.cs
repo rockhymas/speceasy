@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Text;
 using SpecEasy.Specs.BeforeEachAndAfterEachExampleSpecs;
 using Should;
 
@@ -15,9 +16,9 @@ namespace SpecEasy.Specs.GivenCount
             Given("a given is called at nesting level 0.", () => givenCalls.Add("0")).Verify(() =>
                 Given("a given is called at nesting level 1", () => givenCalls.Add("1")).Verify(() =>
                     Given("a given is called at nesting level 2", () => givenCalls.Add("2")).Verify(() =>
-                            Then("each given should have been called only once and in the proper order", () => 
+                            Then("each given should have been called only once and in the proper order", () =>
                                 VerifyGivenCalls(givenCalls, "0 -> 1 -> 2", clearValuesAfterVerify: false)).
-                           Then("each given is called a second time for the second then", () => 
+                           Then("each given is called a second time for the second then", () =>
                                VerifyGivenCalls(givenCalls, "0 -> 1 -> 2 -> 0 -> 1 -> 2", clearValuesAfterVerify: false)))));
         }
 
@@ -51,6 +52,24 @@ namespace SpecEasy.Specs.GivenCount
                                     }));
                         });
                 });
+        }
+
+        public void GivensAndOrsAreCalledOncePerThenInProperOrder()
+        {
+            StringBuilder givens = null;
+            string firstGiven = null;
+
+            When("running a test that has or'd givens", () => SUT.DoNothing());
+
+            Given(() => givens = new StringBuilder()).Verify(() =>
+                Given("a top level given is called", () => givens.Append("a")).
+                Or("a different top level given is called", () => givens.Append("b")).Verify(() =>
+                    Then("only one of the givens has been called", () => givens.ToString().Length.ShouldEqual(1)).
+                    Then("each given called is different", () =>
+                    {
+                        givens.ToString().ShouldNotEqual(firstGiven);
+                        firstGiven = givens.ToString();
+                    })));
         }
 
         private void VerifyGivenCalls(List<string> givenCalls, string expectedValue, bool clearValuesAfterVerify = true)
